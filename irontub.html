@@ -501,8 +501,6 @@
             videoData.likeCount = 0;
             videoData.posted = 'Just now';
             
-            // Note: videoUrl et thumbnail pointent vers les fichiers simulés.
-            
             videos.unshift(videoData); // Ajouter en haut de la liste
             
             // Assurer que la chaîne existe dans la liste globale des chaînes
@@ -776,9 +774,28 @@
                 
                 const videoFile = document.getElementById('video-file').files[0];
                 const thumbnailFile = document.getElementById('thumbnail-file').files[0];
+                const videoTitle = document.getElementById('video-title').value;
+                const videoDuration = document.getElementById('video-duration').value;
 
-                if (!videoFile || !thumbnailFile) {
-                    alert("Please select both a video file and a thumbnail image.");
+                // 1. Vérification de l'utilisateur (devrait être gérée par navigateTo, mais sécurité supplémentaire)
+                if (!currentUser) {
+                    alert("You must be logged in to upload a video. Please sign in first.");
+                    return;
+                }
+
+                // 2. Vérification des champs requis (en plus de la validation HTML5)
+                if (!videoTitle || !videoDuration) {
+                    alert("Please fill in the Title and Duration.");
+                    return;
+                }
+
+                // 3. Vérification des fichiers locaux
+                if (!videoFile) {
+                    alert("Please select a video file.");
+                    return;
+                }
+                if (!thumbnailFile) {
+                    alert("Please select a thumbnail image.");
                     return;
                 }
                 
@@ -787,11 +804,11 @@
                 const thumbnailUrl = URL.createObjectURL(thumbnailFile);
 
                 const videoData = {
-                    title: document.getElementById('video-title').value,
+                    title: videoTitle,
                     description: document.getElementById('video-description').value,
-                    videoUrl: videoUrl, // Utilisation de l'URL d'objet du fichier local
-                    thumbnail: thumbnailUrl, // Utilisation de l'URL d'objet du fichier local
-                    duration: document.getElementById('video-duration').value,
+                    videoUrl: videoUrl, // URL d'objet du fichier local
+                    thumbnail: thumbnailUrl, // URL d'objet du fichier local
+                    duration: videoDuration,
                     category: document.getElementById('video-category').value,
                     comments: []
                 };
