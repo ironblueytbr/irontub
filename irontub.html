@@ -1099,7 +1099,1124 @@
             lucide.createIcons();
             window.scrollTo(0, 0);
         }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IronTub - Video Sharing</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0f0f0f;
+            color: white;
+            margin: 0;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 10px;
+        }
+        .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+            background: #717171;
+        }
+        .video-card:hover .video-thumbnail {
+            border-radius: 0;
+            transition: border-radius 0.2s ease-in-out;
+        }
+        .category-chip {
+            background-color: rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+        .category-chip:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .category-chip.active {
+            background-color: white;
+            color: black;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
+        /* Hexagon Secret Wall Styles */
+        .hexagon-container {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 10px;
+            padding: 20px;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #050505;
+        }
+        .hexagon {
+            width: 60px;
+            height: 68px;
+            background: #111;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            transition: background 0.8s ease, box-shadow 0.4s ease;
+            cursor: pointer;
+        }
+        .hexagon.active {
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        /* Sidebar Overlay Style */
+        #sidebar {
+            z-index: 200; /* Increased to be above everything */
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+        #sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 190;
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <header class="fixed top-0 left-0 right-0 h-14 bg-[#0f0f0f] flex items-center justify-between px-4 z-50">
+        <div class="flex items-center gap-4">
+            <button id="menu-btn" class="p-2 hover:bg-zinc-800 rounded-full cursor-pointer">
+                <i data-lucide="menu"></i>
+            </button>
+            <div id="logo" class="flex items-center gap-1 cursor-pointer" onclick="navigateTo('home')">
+                <div class="bg-purple-600 p-1 rounded-lg">
+                    <i data-lucide="play" class="fill-white" size="20"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tighter">IronTub</span>
+            </div>
+        </div>
+
+        <div class="flex-1 max-w-2xl hidden md:flex items-center gap-4 ml-10">
+            <div class="flex flex-1 items-center bg-zinc-900 border border-zinc-700 rounded-full overflow-hidden">
+                <input type="text" id="search-input" placeholder="Search" class="flex-1 bg-transparent border-none outline-none px-4 py-2 text-white">
+                <button id="search-btn" class="bg-zinc-800 border-l border-zinc-700 px-5 py-2 hover:bg-zinc-700 cursor-pointer">
+                    <i data-lucide="search" size="20" class="text-zinc-400"></i>
+                </button>
+            </div>
+            <button class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-full cursor-pointer">
+                <i data-lucide="mic" size="20"></i>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-4">
+            <button id="sync-btn" onclick="syncWithCloud(true)" class="p-2 hover:bg-zinc-800 rounded-full cursor-pointer group" title="Sync across devices">
+                <i data-lucide="refresh-cw" id="sync-indicator" class="group-hover:rotate-180 transition-transform duration-500"></i>
+            </button>
+            <button id="nav-upload" onclick="navigateTo('upload')" class="p-2 hover:bg-zinc-800 rounded-full cursor-pointer hidden md:block" title="Create">
+                <i data-lucide="video"></i>
+            </button>
+            <button class="p-2 hover:bg-zinc-800 rounded-full cursor-pointer hidden md:block">
+                <i data-lucide="bell"></i>
+            </button>
+            <div id="user-menu-container" class="relative">
+                <div id="user-menu-btn" class="flex items-center gap-2 cursor-pointer p-1 hover:bg-zinc-800 rounded-full">
+                    <div id="user-avatar" class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-sm">
+                        <i data-lucide="user" size="18"></i>
+                    </div>
+                </div>
+                <div id="user-dropdown" class="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl hidden z-[60]">
+                    <div class="p-4 border-b border-zinc-800">
+                        <p id="dropdown-user-name" class="font-bold text-sm truncate">Not Signed In</p>
+                    </div>
+                    <button id="dropdown-channel-btn" onclick="navigateTo('channel')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-3">
+                        <i data-lucide="user-square-2" size="16"></i> Your Channel
+                    </button>
+                    <button id="logout-btn" onclick="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 text-red-400 flex items-center gap-3">
+                        <i data-lucide="log-out" size="16"></i> Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+    <div class="flex pt-14">
+        <aside id="sidebar" class="sidebar-scrollbar fixed left-0 top-14 bottom-0 w-60 bg-[#0f0f0f] overflow-y-auto hidden px-3">
+            <div class="py-3 flex flex-col gap-1">
+                <button data-view="home" onclick="navigateTo('home')" class="nav-item flex items-center gap-5 px-3 py-2 bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="home"></i>
+                    <span class="text-sm font-medium">Home</span>
+                </button>
+                <button data-view="shorts" onclick="navigateTo('shorts')" class="nav-item flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="play-circle"></i>
+                    <span class="text-sm">Shorts</span>
+                </button>
+                <button class="flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="layers"></i>
+                    <span class="text-sm">Subscriptions</span>
+                </button>
+            </div>
+            <hr class="border-zinc-800 my-2">
+            <div class="py-3 flex flex-col gap-1">
+                <span class="px-3 pb-2 font-bold text-sm">You</span>
+                <button id="nav-history" class="nav-item flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left" data-view="home">
+                    <i data-lucide="history"></i>
+                    <span class="text-sm">History</span>
+                </button>
+                <button data-view="channel" onclick="navigateTo('channel')" class="nav-item flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="user-square-2"></i>
+                    <span class="text-sm">Your Channel</span>
+                </button>
+                <button class="flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="clock"></i>
+                    <span class="text-sm">Watch Later</span>
+                </button>
+                <button class="flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl cursor-pointer w-full text-left">
+                    <i data-lucide="thumbs-up"></i>
+                    <span class="text-sm">Liked Videos</span>
+                </button>
+            </div>
+            <hr class="border-zinc-800 my-2">
+            <div class="py-3 flex flex-col gap-1">
+                <span class="px-3 pb-2 font-bold text-sm">Subscriptions</span>
+                <div id="subs-list" class="flex flex-col gap-1">
+                    </div>
+            </div>
+        </aside>
+
+        <main id="main-content" class="flex-1 lg:ml-60 p-4 min-h-screen transition-all duration-300">
+            </main>
+    </div>
+
+    <div id="login-modal" class="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center hidden">
+        <div class="bg-zinc-900 p-8 rounded-2xl w-full max-w-md border border-zinc-800">
+            <h2 class="text-2xl font-bold mb-6 text-center">Join IronTub</h2>
+            <div class="space-y-4">
+                <div class="flex flex-col items-center mb-4">
+                    <div id="login-avatar-preview" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-dashed border-zinc-700 flex items-center justify-center cursor-pointer overflow-hidden relative group">
+                        <i data-lucide="camera" class="text-zinc-500 group-hover:text-purple-400"></i>
+                        <input type="file" id="login-avatar-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                        <img id="avatar-preview-img" class="absolute inset-0 w-full h-full object-cover hidden">
+                    </div>
+                    <p class="text-[10px] text-zinc-500 mt-2">Choose Profile Picture</p>
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1">Email Address</label>
+                    <input type="email" id="login-email" placeholder="example@email.com" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500 mb-3">
+                    
+                    <label class="block text-sm text-zinc-400 mb-1">Channel Name</label>
+                    <input type="text" id="login-name" placeholder="Enter your name" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500">
+                </div>
+                <button id="login-confirm-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg transition-colors">
+                    Create / Connect
+                </button>
+                <button id="login-close-btn" class="w-full text-zinc-400 hover:text-white text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="share-modal" class="fixed inset-0 bg-black/80 z-[150] flex items-center justify-center hidden">
+        <div class="bg-zinc-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-zinc-800 flex justify-between items-center">
+                <h3 class="font-bold">Share</h3>
+                <button onclick="closeShareModal()" class="p-1 hover:bg-zinc-800 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+                <div class="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+                    <div class="flex flex-col items-center gap-2 min-w-[70px]">
+                        <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white"><i data-lucide="facebook"></i></div>
+                        <span class="text-[10px]">Facebook</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-2 min-w-[70px]">
+                        <div class="w-12 h-12 rounded-full bg-sky-500 flex items-center justify-center text-white"><i data-lucide="twitter"></i></div>
+                        <span class="text-[10px]">Twitter</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-2 min-w-[70px]">
+                        <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white"><i data-lucide="message-circle"></i></div>
+                        <span class="text-[10px]">WhatsApp</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-2 min-w-[70px]">
+                        <div class="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center text-white"><i data-lucide="mail"></i></div>
+                        <span class="text-[10px]">Email</span>
+                    </div>
+                </div>
+                <div class="bg-black border border-zinc-800 rounded-lg p-3 flex justify-between items-center">
+                    <span class="text-xs text-zinc-400 truncate mr-4">https://irontub.com/watch?v=...</span>
+                    <button class="text-blue-400 text-xs font-bold uppercase">Copy</button>
+                </div>
+                <div class="h-[300px] flex flex-col items-center justify-end pb-10 gap-4">
+                    <p class="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Scroll deeper</p>
+                    <button id="secret-btn" class="bg-zinc-800/80 hover:bg-purple-600 text-zinc-600 hover:text-white px-10 py-4 rounded-2xl border-2 border-dashed border-zinc-700 hover:border-purple-400 transition-all font-black tracking-[0.2em] text-sm group">
+                        <span class="group-hover:scale-110 inline-block transition-transform">SECRET</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hexagon-wall" class="fixed inset-0 z-[200] bg-black hidden flex-col">
+        <div class="absolute top-6 right-6 z-[210]">
+            <button onclick="closeSecretWall()" class="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div id="hexagon-grid" class="hexagon-container">
+            </div>
+    </div>
+
+    <script>
+        // --- State Management & Memory System ---
+        let currentUser = JSON.parse(localStorage.getItem('it_user')) || null;
+        let currentView = 'home';
+        let currentVideo = null;
+        // Initialiser avec un tableau vide si rien n'existe pour s'assurer que mergeById fonctionne
+        let videos = JSON.parse(localStorage.getItem('it_videos')) || [];
+        let shorts = JSON.parse(localStorage.getItem('it_shorts')) || [];
+        let channels = JSON.parse(localStorage.getItem('it_channels')) || [];
+        const subs = JSON.parse(localStorage.getItem('it_subs')) || [];
+        let channelStats = JSON.parse(localStorage.getItem('it_channel_stats')) || {};
+        let likedVideos = JSON.parse(localStorage.getItem('it_liked_vids')) || []; // Tracking user's likes
+        let currentShortIndex = 0;
+        let needsPush = false; // Drapeau pour indiquer qu'une action locale a été faite
+
+        // Global Sync Constant (A shared public blob for all users)
+        // C'est l'ID du blob public qui contient toutes les vidéos.
+        const GLOBAL_BLOB_ID = '1342500096537305088'; 
+        
+        // --- UTILS ---
+
+        function saveState() {
+            localStorage.setItem('it_user', JSON.stringify(currentUser));
+            localStorage.setItem('it_videos', JSON.stringify(videos));
+            localStorage.setItem('it_shorts', JSON.stringify(shorts));
+            localStorage.setItem('it_channels', JSON.stringify(channels));
+            localStorage.setItem('it_subs', JSON.stringify(subs));
+            localStorage.setItem('it_channel_stats', JSON.stringify(channelStats));
+            localStorage.setItem('it_liked_vids', JSON.stringify(likedVideos));
+        }
+
+        function navigateTo(view) {
+            currentView = view;
+            if (view === 'upload' && !currentUser) {
+                openLoginModal();
+                currentView = 'home';
+                return;
+            }
+            renderView();
+            toggleSidebar(false);
+        }
+
+        // --- SYNCHRONISATION GLOBALE ---
+
+        const mergeById = (local, cloud) => {
+            const map = new Map();
+            
+            // 1. Charger les données locales dans la Map
+            local.forEach(item => map.set(item.id || item.name, item));
+
+            // 2. Fusionner avec les données cloud
+            cloud.forEach(cloudItem => {
+                const key = cloudItem.id || cloudItem.name;
+                
+                if (map.has(key)) {
+                    const localItem = map.get(key);
+                    
+                    // Utiliser la version cloud (généralement la plus récente) comme base
+                    const mergedItem = { ...cloudItem }; 
+                    
+                    // Fusion des compteurs: conserver la valeur la plus élevée (pour éviter la perte de likes/vues)
+                    if (localItem.likeCount !== undefined && mergedItem.likeCount !== undefined) {
+                        mergedItem.likeCount = Math.max(localItem.likeCount || 0, mergedItem.likeCount || 0);
+                    }
+                    if (localItem.views !== undefined && mergedItem.views !== undefined) {
+                        mergedItem.views = Math.max(localItem.views || 0, mergedItem.views || 0);
+                    }
+                    
+                    // Assurez-vous que les vidéos uploadées localement (avec videoUrl: URL.createObjectURL) 
+                    // conservent leur lien vidéo local s'il n'est pas dans le cloud (car JSON Blob ne supporte pas Blob URLs)
+                    if (localItem.videoUrl && !cloudItem.videoUrl) {
+                        mergedItem.videoUrl = localItem.videoUrl;
+                    }
+
+                    map.set(key, mergedItem);
+                } else {
+                    // Ajouter les nouveaux éléments du cloud
+                    map.set(key, cloudItem);
+                }
+            });
+            return Array.from(map.values());
+        };
+
+        const mergeStats = (local, cloud) => {
+            const merged = { ...local };
+            for (const key in cloud) {
+                if (cloud.hasOwnProperty(key)) {
+                    // Conserver la valeur la plus élevée pour simuler l'état global
+                    merged[key] = Math.max(merged[key] || 0, cloud[key] || 0);
+                }
+            }
+            return merged;
+        };
+
+        /**
+         * Synchronise les données locales avec le cloud.
+         * @param {boolean} forcePush - Force la mise à jour des données locales vers le cloud.
+         */
+        async function syncWithCloud(forcePush = false) {
+            const syncBtn = document.getElementById('sync-indicator');
+            if (syncBtn) syncBtn.classList.add('animate-spin', 'text-purple-500');
+
+            try {
+                let cloudData = {};
+                
+                // 1. PULL: Récupérer les données globales du cloud
+                try {
+                    const response = await fetch(`https://jsonblob.com/api/jsonBlob/${GLOBAL_BLOB_ID}`);
+                    if (response.ok) {
+                        cloudData = await response.json();
+                        
+                        // *** CORRECTION CLÉ POUR LE PROBLÈME DES VIDÉOS MANQUANTES ***
+                        // S'assurer que les données cloud sont fusionnées AVEC les données locales.
+                        videos = mergeById(videos, cloudData.videos || []);
+                        shorts = mergeById(shorts, cloudData.shorts || []);
+                        channels = mergeById(channels, cloudData.channels || []);
+                        channelStats = mergeStats(channelStats, cloudData.channelStats || {});
+                        
+                        // Message de confirmation dans la console pour vérifier le Pull
+                        console.log("Sync: Successfully pulled and merged cloud data.");
+                    } else {
+                        console.warn("Sync: Cloud data unavailable or empty. Status:", response.status);
+                        // Ne pas bloquer l'application; continuer avec l'état local actuel.
+                    }
+                } catch (fetchErr) {
+                    // C'est souvent la cause d'un échec : erreur réseau, CORS, etc.
+                    console.error("Sync Error: Failed to fetch cloud data. Using local state.", fetchErr);
+                }
+                
+                saveState(); // Sauvegarder l'état fusionné localement (cloud + local)
+                
+                // 2. PUSH: Mettre à jour le cloud si une action locale a eu lieu OU si un push est forcé
+                if (forcePush || needsPush) {
+                    const dataToPush = { 
+                        // Envoyer l'état global actuel (qui inclut les nouvelles données locales)
+                        videos, 
+                        shorts, 
+                        channels, 
+                        channelStats 
+                    };
+                    
+                    const pushResponse = await fetch(`https://jsonblob.com/api/jsonBlob/${GLOBAL_BLOB_ID}`, {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(dataToPush)
+                    });
+
+                    if (pushResponse.ok) {
+                        console.log("Sync: Successfully pushed local changes to cloud.");
+                        needsPush = false; // Réinitialiser le drapeau de push après un succès
+                    } else {
+                         console.error("Sync Error: Failed to push data to cloud. Status:", pushResponse.status);
+                    }
+                }
+                
+                // Rendu de la vue avec les données mises à jour (Cloud + Local)
+                renderView(); 
+                updateSubsSidebar();
+
+            } catch (err) {
+                console.error("Sync process failed:", err);
+            } finally {
+                if (syncBtn) syncBtn.classList.remove('animate-spin', 'text-purple-500');
+            }
+        }
+        
+        // --- LOGIQUE UTILISATEUR & ACTIONS GLOBALES ---
+
+        function toggleSubscribe(channelName) {
+            if (!currentUser) {
+                openLoginModal();
+                return;
+            }
+            if (currentUser.name === channelName) {
+                alert("You cannot subscribe to yourself!");
+                return;
+            }
+
+            const subIndex = subs.indexOf(channelName);
+            if (subIndex === -1) {
+                subs.push(channelName);
+                channelStats[channelName] = (channelStats[channelName] || 0) + 1;
+            } else {
+                subs.splice(subIndex, 1);
+                channelStats[channelName] = Math.max(0, (channelStats[channelName] || 1) - 1);
+            }
+            saveState();
+            needsPush = true;
+            syncWithCloud(true); // Pousser les stats immédiatement
+        }
+
+        function handleLikeClick(button) {
+            if (!currentUser) {
+                openLoginModal();
+                return;
+            }
+
+            const videoId = currentVideo.id;
+            const index = likedVideos.indexOf(videoId);
+
+            // Mettre à jour l'état de l'utilisateur (likedVideos)
+            if (index === -1) {
+                likedVideos.push(videoId);
+            } else {
+                likedVideos.splice(index, 1);
+            }
+
+            // Mettre à jour le compteur global de la vidéo
+            const globalVideo = videos.find(v => v.id === videoId);
+            if (globalVideo) {
+                const likeChange = (index === -1) ? 1 : -1;
+                globalVideo.likeCount = Math.max(0, (globalVideo.likeCount || 0) + likeChange);
+                currentVideo.likeCount = globalVideo.likeCount; // Mettre à jour l'objet local affiché
+            }
+            
+            saveState();
+            needsPush = true; 
+            syncWithCloud(true); // Pousser les stats de like mises à jour
+        }
+        
+        /**
+         * Gère l'upload d'une nouvelle vidéo et sa synchronisation globale.
+         */
+        function handleUpload(videoData) {
+            if (!currentUser) {
+                alert("You must be logged in to upload a video.");
+                return;
+            }
+
+            // Créer un ID unique (basé sur le temps + un peu de randomisation pour la robustesse)
+            videoData.id = `${Date.now()}-${Math.floor(Math.random() * 1000)}`; 
+            
+            // Ajouter les métadonnées de l'utilisateur
+            videoData.channel = currentUser.name;
+            videoData.avatar = currentUser.avatarUrl || 'https://via.placeholder.com/150?text=U';
+            videoData.views = 0; // Vues initiales
+            videoData.likeCount = 0;
+            videoData.posted = 'Just now';
+            
+            videos.unshift(videoData); // Ajouter en haut de la liste
+            
+            // Assurer que la chaîne existe dans la liste globale des chaînes
+            const channelExists = channels.some(c => c.name === currentUser.name);
+            if (!channelExists) {
+                channels.push({ name: currentUser.name, avatarUrl: currentUser.avatarUrl });
+            }
+            
+            saveState();
+            needsPush = true; 
+            syncWithCloud(true); // Pousser immédiatement les nouvelles vidéos au cloud
+            
+            // Revenir à l'accueil
+            currentView = 'home';
+            renderView();
+            alert("Video uploaded and synchronised globally!");
+        }
+
+        // --- RENDER VIEWS ---
+
+        function renderHome(container) {
+            // Category Chips
+            const categories = ['All', 'Gaming', 'Music', 'Live', 'Computer Science', 'Ironworking', 'Lo-fi', 'React', 'Animations'];
+            const chipsContainer = document.createElement('div');
+            chipsContainer.className = 'flex items-center gap-3 overflow-x-auto pb-4 sticky top-14 bg-[#0f0f0f] z-40 no-scrollbar';
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `category-chip px-3 py-1.5 rounded-lg text-sm font-medium ${cat === 'All' ? 'active' : ''}`;
+                btn.textContent = cat;
+                chipsContainer.appendChild(btn);
+            });
+            container.appendChild(chipsContainer);
+
+            // Video Grid
+            const grid = document.createElement('div');
+            grid.id = 'video-grid';
+            grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 mt-2';
+            
+            if (videos.length === 0) {
+                container.innerHTML += `
+                    <div class="flex flex-col items-center justify-center py-20 text-zinc-500 w-full col-span-full">
+                        <i data-lucide="video-off" size="64" class="mb-4 text-zinc-700"></i>
+                        <h2 class="text-xl font-bold">No videos found</h2>
+                        <p class="text-sm mb-6">Start by uploading your first masterpiece!</p>
+                        <button onclick="document.getElementById('nav-upload').click()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-full font-bold transition-colors">
+                            Upload Now
+                        </button>
+                    </div>
+                `;
+                // Ne pas retourner ici si le container est vide, car nous voulons que le message s'affiche.
+            } else {
+
+                videos.forEach(video => {
+                    const card = document.createElement('div');
+                    card.className = 'video-card flex flex-col gap-3 cursor-pointer group';
+                    card.onclick = () => {
+                        currentVideo = video;
+                        currentView = 'watch';
+                        renderView();
+                    };
+                    card.innerHTML = `
+                        <div class="relative aspect-video">
+                            <img src="${video.thumbnail}" class="video-thumbnail w-full h-full object-cover rounded-xl group-hover:rounded-none transition-all duration-200">
+                            <span class="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+                                ${video.duration}
+                            </span>
+                        </div>
+                        <div class="flex gap-3">
+                            <img src="${video.avatar}" class="w-9 h-9 rounded-full flex-shrink-0">
+                            <div class="flex flex-col overflow-hidden">
+                                <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">
+                                    ${video.title}
+                                </h3>
+                                <p class="text-zinc-400 text-xs hover:text-white transition-colors truncate">
+                                    ${video.channel}
+                                </p>
+                                <p class="text-zinc-400 text-xs">
+                                    ${video.views} views • ${video.posted}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                container.appendChild(grid);
+            }
+        }
+
+        function renderWatch(container) {
+            if (!currentVideo) {
+                currentView = 'home';
+                renderView();
+                return;
+            }
+
+            // Incrémenter les vues (et marquer pour le push)
+            currentVideo.views = (currentVideo.views || 0) + 1;
+            const globalVideoIndex = videos.findIndex(v => v.id === currentVideo.id);
+            if (globalVideoIndex !== -1) {
+                videos[globalVideoIndex].views = currentVideo.views;
+            }
+            needsPush = true;
+            syncWithCloud(); // Pousser l'incrémentation des vues
+
+            const videoLikes = currentVideo.likeCount || 0;
+            const isLiked = likedVideos.includes(currentVideo.id);
+
+            const channelIsSubscribed = subs.includes(currentVideo.channel);
+
+            const commentHtml = (currentVideo.comments || []).map(c => `
+                <div class="flex gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-xs overflow-hidden">
+                        ${c.avatar ? `<img src="${c.avatar}" class="w-full h-full object-cover">` : (c.user ? c.user[0] : 'U')}
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold mb-1">@${c.user ? c.user.toLowerCase() : 'user'} <span class="text-zinc-400 font-normal text-xs ml-2">Just now</span></p>
+                        <p class="text-sm">${c.text}</p>
+                        <div class="flex items-center gap-4 mt-2">
+                            <button class="flex items-center gap-1 text-xs text-zinc-400 hover:text-white"><i data-lucide="thumbs-up" size="14"></i> 0</button>
+                            <button class="text-xs text-zinc-400 hover:text-white">Reply</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
+                    <div class="flex-1">
+                        <div id="player-container" class="aspect-video bg-black rounded-xl overflow-hidden mb-4 relative group">
+                            ${currentVideo.videoUrl ? 
+                                `<video id="main-video" src="${currentVideo.videoUrl}" controls class="w-full h-full" autoplay></video>` : 
+                                `<img src="${currentVideo.thumbnail}" class="w-full h-full object-cover opacity-50">
+                                <div onclick="alert('Note: The file is no longer available. Re-upload to play!')" class="absolute inset-0 flex flex-col items-center justify-center gap-4 cursor-pointer">
+                                    <div class="bg-purple-600 p-6 rounded-full hover:scale-110 transition-transform">
+                                        <i data-lucide="play" class="fill-white" size="48"></i>
+                                    </div>
+                                    <p class="text-zinc-400 text-xs font-medium bg-black/60 px-4 py-2 rounded-full">Session file expired</p>
+                                </div>`
+                            }
+                        </div>
+                        <h1 class="text-xl font-bold mb-3">${currentVideo.title}</h1>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-zinc-700">
+                                    <img src="${currentVideo.avatar}" class="w-full h-full object-cover">
+                                </div>
+                                <div>
+                                    <p class="font-bold text-base leading-tight">${currentVideo.channel}</p>
+                                    <p class="text-zinc-400 text-xs">${channelStats[currentVideo.channel] || 0} subscribers</p>
+                                </div>
+                                <button onclick="toggleSubscribe('${currentVideo.channel}')" class="ml-4 ${channelIsSubscribed ? 'bg-zinc-800 text-white' : 'bg-white text-black'} px-4 py-2 rounded-full text-sm font-bold hover:opacity-90 cursor-pointer">
+                                    ${channelIsSubscribed ? 'Subscribed' : 'Subscribe'}
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex bg-zinc-800 rounded-full">
+                                    <button onclick="handleLikeClick(this)" class="flex items-center gap-2 px-4 py-2 border-r border-zinc-700 hover:bg-zinc-700 rounded-l-full cursor-pointer transition-colors duration-200">
+                                        <i data-lucide="thumbs-up" size="18" class="${isLiked ? 'fill-white' : ''}"></i>
+                                        <span id="like-count" class="text-sm">${videoLikes}</span>
+                                    </button>
+                                    <button onclick="${!currentUser ? 'openLoginModal()' : ''}" class="px-4 py-2 hover:bg-zinc-700 rounded-r-full cursor-pointer">
+                                        <i data-lucide="thumbs-down" size="18"></i>
+                                    </button>
+                                </div>
+                                <button onclick="openShareModal()" class="flex items-center gap-2 bg-zinc-800 px-4 py-2 rounded-full hover:bg-zinc-700 cursor-pointer">
+                                    <i data-lucide="share-2" size="18"></i>
+                                    <span class="text-sm font-medium">Share</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-800 p-3 rounded-xl mb-6">
+                            <p class="text-sm font-bold mb-1">${currentVideo.views} views • ${currentVideo.posted}</p>
+                            <p class="text-sm">${currentVideo.description}</p>
+                        </div>
+                        
+                        <h2 class="text-lg font-bold mb-4">${(currentVideo.comments || []).length} Comments</h2>
+                        <div class="flex gap-3 mb-6">
+                            <div class="w-10 h-10 rounded-full flex-shrink-0 bg-zinc-700 flex items-center justify-center font-bold text-sm overflow-hidden">
+                                ${currentUser ? (currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" class="w-full h-full object-cover">` : currentUser.name[0]) : '<i data-lucide="user"></i>'}
+                            </div>
+                            <input type="text" placeholder="Add a comment..." class="flex-1 bg-transparent border-b border-zinc-700 outline-none focus:border-white pb-1 text-sm">
+                        </div>
+                        <div id="comment-list">
+                            ${commentHtml}
+                        </div>
+                    </div>
+                    
+                    <div class="lg:w-80 w-full flex-shrink-0">
+                        <h2 class="font-bold text-lg mb-4">Related</h2>
+                        <div class="space-y-4">
+                            ${videos.slice(0, 5).filter(v => v.id !== currentVideo.id).map(v => `
+                                <div class="flex gap-2 cursor-pointer" onclick="currentVideo = videos.find(vid => vid.id === '${v.id}'); renderView();">
+                                    <div class="aspect-video w-36 flex-shrink-0 relative">
+                                        <img src="${v.thumbnail}" class="w-full h-full object-cover rounded-lg">
+                                        <span class="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded">${v.duration}</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold line-clamp-2 leading-tight">${v.title}</p>
+                                        <p class="text-zinc-400 text-xs">${v.channel}</p>
+                                        <p class="text-zinc-400 text-xs">${v.views} views</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Rendu de la page d'upload avec un formulaire simulé.
+         */
+        function renderUpload(container) {
+            container.className = 'flex-1 lg:ml-60 p-4 min-h-screen flex items-start justify-center pt-10'; // Centrer le formulaire
+
+            container.innerHTML = `
+                <div class="bg-zinc-900 p-8 rounded-2xl w-full max-w-2xl border border-zinc-800">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-purple-400">Upload Video & Sync Globally</h2>
+                    <form id="upload-form" class="space-y-6">
+                        <div>
+                            <label for="video-title" class="block text-sm font-medium mb-2">Video Title *</label>
+                            <input type="text" id="video-title" required placeholder="A catchy title for the world" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500">
+                        </div>
+
+                        <div>
+                            <label for="video-description" class="block text-sm font-medium mb-2">Description</label>
+                            <textarea id="video-description" rows="4" placeholder="Tell the world about your video" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500"></textarea>
+                        </div>
+                        
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label for="video-file" class="block text-sm font-medium mb-2">Video File *</label>
+                                <input type="file" id="video-file" required accept="video/*" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                                <p class="text-xs text-zinc-500 mt-1">Sélectionnez le fichier vidéo depuis votre appareil.</p>
+                            </div>
+                            <div class="flex-1">
+                                <label for="thumbnail-file" class="block text-sm font-medium mb-2">Thumbnail Image *</label>
+                                <input type="file" id="thumbnail-file" required accept="image/*" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                                <p class="text-xs text-zinc-500 mt-1">L'image de couverture pour votre vidéo.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-1/2">
+                                <label for="video-duration" class="block text-sm font-medium mb-2">Duration (Format MM:SS) *</label>
+                                <input type="text" id="video-duration" required placeholder="Ex: 12:45" value="03:15" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500">
+                            </div>
+                            <div class="w-1/2">
+                                <label for="video-category" class="block text-sm font-medium mb-2">Category</label>
+                                <select id="video-category" class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 outline-none focus:border-purple-500">
+                                    <option value="Gaming">Gaming</option>
+                                    <option value="Music">Music</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Ironworking">Ironworking</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-3">
+                            <i data-lucide="cloud-upload" size="20"></i> Upload & Sync Globally
+                        </button>
+                    </form>
+                </div>
+            `;
+            
+            lucide.createIcons(); // Créer les icônes après injection du HTML
+
+            // Gérer la soumission du formulaire d'upload
+            document.getElementById('upload-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const videoFile = document.getElementById('video-file').files[0];
+                const thumbnailFile = document.getElementById('thumbnail-file').files[0];
+                const videoTitle = document.getElementById('video-title').value;
+                const videoDuration = document.getElementById('video-duration').value;
+
+                // 1. Vérification de l'utilisateur (devrait être gérée par navigateTo, mais sécurité supplémentaire)
+                if (!currentUser) {
+                    alert("You must be logged in to upload a video. Please sign in first.");
+                    return;
+                }
+
+                // 2. Vérification des champs requis (en plus de la validation HTML5)
+                if (!videoTitle || !videoDuration) {
+                    alert("Please fill in the Title and Duration.");
+                    return;
+                }
+
+                // 3. Vérification des fichiers locaux
+                if (!videoFile) {
+                    alert("Please select a video file.");
+                    return;
+                }
+                if (!thumbnailFile) {
+                    alert("Please select a thumbnail image.");
+                    return;
+                }
+                
+                // Utiliser URL.createObjectURL pour simuler un lien vers les fichiers locaux
+                // Ces liens sont temporaires et locaux. Ils ne seront pas synchronisés via JSON Blob.
+                const videoUrl = URL.createObjectURL(videoFile);
+                const thumbnailUrl = URL.createObjectURL(thumbnailFile);
+
+                const videoData = {
+                    title: videoTitle,
+                    description: document.getElementById('video-description').value,
+                    videoUrl: videoUrl, 
+                    thumbnail: thumbnailUrl, 
+                    duration: videoDuration,
+                    category: document.getElementById('video-category').value,
+                    comments: []
+                };
+
+                handleUpload(videoData);
+            });
+        }
+        
+        function renderChannel(container) {
+            if (!currentUser) {
+                openLoginModal();
+                currentView = 'home';
+                renderView();
+                return;
+            }
+            
+            const userVideos = videos.filter(v => v.channel === currentUser.name);
+            const subCount = channelStats[currentUser.name] || 0;
+            const totalViews = userVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+
+            container.innerHTML = `
+                <div class="w-full max-w-6xl mx-auto">
+                    <div class="h-40 bg-zinc-800 rounded-xl mb-12 relative overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-purple-800 to-black opacity-30"></div>
+                        <div class="absolute bottom-0 left-8 translate-y-1/2 flex items-end gap-6">
+                            <div class="w-32 h-32 rounded-full border-4 border-[#0f0f0f] bg-zinc-700 flex items-center justify-center text-4xl font-bold overflow-hidden">
+                                ${currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" class="w-full h-full object-cover">` : currentUser.name[0]}
+                            </div>
+                            <div>
+                                <h1 class="text-3xl font-bold">${currentUser.name}</h1>
+                                <p class="text-zinc-400">${subCount} subscribers • ${userVideos.length} videos</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-16 border-b border-zinc-700 mb-6 flex gap-6 text-sm font-medium">
+                        <button class="pb-2 border-b-2 border-white text-white">Videos</button>
+                        <button class="pb-2 text-zinc-400 hover:text-white">About</button>
+                        <button class="pb-2 text-zinc-400 hover:text-white">Stats</button>
+                    </div>
+
+                    <h2 class="text-xl font-bold mb-4">Your Uploads</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10">
+                        ${userVideos.length > 0 ? userVideos.map(v => `
+                            <div class="video-card flex flex-col gap-3 cursor-pointer group" onclick="currentVideo = videos.find(vid => vid.id === '${v.id}'); navigateTo('watch');">
+                                <div class="relative aspect-video">
+                                    <img src="${v.thumbnail}" class="video-thumbnail w-full h-full object-cover rounded-xl group-hover:rounded-none transition-all duration-200">
+                                    <span class="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-1.5 py-0.5 rounded">${v.duration}</span>
+                                </div>
+                                <div class="flex flex-col overflow-hidden pl-1">
+                                    <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">${v.title}</h3>
+                                    <p class="text-zinc-400 text-xs">${v.views} views • ${v.posted}</p>
+                                </div>
+                            </div>
+                        `).join('') : `
+                            <p class="text-zinc-500 col-span-full">You haven't uploaded any videos yet. <a href="#" onclick="navigateTo('upload')" class="text-purple-400 hover:underline">Upload your first one!</a></p>
+                        `}
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderShorts(container) {
+            container.innerHTML = `<div class="p-6 text-center text-zinc-500">Shorts view is coming soon!</div>`;
+        }
+
+        function openLoginModal() {
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        function login(name, email, avatarUrl) {
+            currentUser = { name, email, avatarUrl, id: 'user_' + Date.now() };
+            saveState();
+            closeLoginModal();
+            updateHeader();
+            syncWithCloud(); // Synchroniser après la connexion pour s'assurer d'avoir les données globales
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('it_user');
+            updateHeader();
+            navigateTo('home');
+        }
+
+        function updateHeader() {
+            const userAvatarDiv = document.getElementById('user-avatar');
+            const dropdownUserName = document.getElementById('dropdown-user-name');
+            
+            if (currentUser) {
+                dropdownUserName.textContent = currentUser.name;
+                if (currentUser.avatarUrl) {
+                    userAvatarDiv.innerHTML = `<img src="${currentUser.avatarUrl}" class="w-full h-full object-cover">`;
+                } else {
+                    userAvatarDiv.innerHTML = currentUser.name[0];
+                }
+                userAvatarDiv.onclick = () => document.getElementById('user-dropdown').classList.toggle('hidden');
+                document.getElementById('user-menu-btn').onclick = () => document.getElementById('user-dropdown').classList.toggle('hidden');
+                
+            } else {
+                dropdownUserName.textContent = 'Not Signed In';
+                userAvatarDiv.innerHTML = '<i data-lucide="user" size="18"></i>';
+                document.getElementById('user-menu-btn').onclick = openLoginModal;
+                document.getElementById('user-dropdown').classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function openShareModal() {
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+        
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function toggleSidebar(show) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const mainContent = document.getElementById('main-content');
+            
+            if (show === undefined) {
+                show = sidebar.classList.contains('hidden');
+            }
+
+            if (window.innerWidth < 1024) { // Mobile View
+                if (show) {
+                    sidebar.classList.remove('hidden');
+                    sidebar.style.transform = 'translateX(0)';
+                    overlay.style.display = 'block';
+                } else {
+                    sidebar.style.transform = 'translateX(-100%)';
+                    setTimeout(() => sidebar.classList.add('hidden'), 300);
+                    overlay.style.display = 'none';
+                }
+            } else { // Desktop View
+                sidebar.classList.remove('hidden');
+                if (show) {
+                    mainContent.classList.add('lg:ml-60');
+                    mainContent.classList.remove('lg:ml-0');
+                    sidebar.style.width = '240px';
+                } else {
+                    mainContent.classList.remove('lg:ml-60');
+                    mainContent.classList.add('lg:ml-0');
+                    sidebar.style.width = '72px'; // Mini-sidebar placeholder, though CSS hides it now
+                    sidebar.classList.add('hidden'); // Simplified: hide it fully on click
+                }
+            }
+        }
+        
+        // --- INITIALIZATION ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            updateHeader();
+            updateSubsSidebar();
+            
+            // Écouteur pour le bouton de menu (sidebar)
+            document.getElementById('menu-btn').addEventListener('click', () => toggleSidebar());
+
+            // Gérer le login modal
+            document.getElementById('login-confirm-btn').addEventListener('click', () => {
+                const name = document.getElementById('login-name').value;
+                const email = document.getElementById('login-email').value;
+                const avatarFile = document.getElementById('login-avatar-input').files[0];
+                let avatarUrl = '';
+
+                if (avatarFile) {
+                    // Simuler l'enregistrement de l'avatar en Data URL (mémoire locale)
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        login(name, email, e.target.result);
+                    };
+                    reader.readAsDataURL(avatarFile);
+                } else {
+                    login(name, email, 'https://via.placeholder.com/150?text=' + name[0]);
+                }
+            });
+
+            document.getElementById('login-close-btn').addEventListener('click', closeLoginModal);
+            
+            // Preview de l'avatar
+            document.getElementById('login-avatar-input').addEventListener('change', function(e) {
+                const img = document.getElementById('avatar-preview-img');
+                if (e.target.files && e.target.files[0]) {
+                    img.src = URL.createObjectURL(e.target.files[0]);
+                    img.classList.remove('hidden');
+                    document.querySelector('#login-avatar-preview i').classList.add('hidden');
+                }
+            });
+
+            // Gérer le dropdown utilisateur
+            document.getElementById('user-menu-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentUser) {
+                    document.getElementById('user-dropdown').classList.toggle('hidden');
+                } else {
+                    openLoginModal();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                const dropdown = document.getElementById('user-dropdown');
+                if (dropdown && !dropdown.contains(e.target) && !document.getElementById('user-menu-btn').contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+            
+            // Synchronisation initiale et rendu de la vue par défaut
+            // C'est l'appel CLÉ qui va charger les vidéos au démarrage
+            syncWithCloud();
+        });
+        
+        function updateSubsSidebar() {
+            const sList = document.getElementById('subs-list');
+            if (!sList) return;
+            sList.innerHTML = '';
+            if (subs.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'px-3 py-2 text-xs text-zinc-500 italic';
+                p.textContent = 'No subscriptions yet';
+                sList.appendChild(p);
+            }
+            subs.forEach((name, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'flex items-center gap-5 px-3 py-2 hover:bg-zinc-800 rounded-xl w-full text-left';
+                btn.onclick = () => {
+                    const term = name.toLowerCase();
+                    currentView = 'home';
+                    renderView();
+                    const grid = document.getElementById('video-grid');
+                    if (grid) {
+                        grid.innerHTML = '';
+                        videos.filter(v => v.channel.toLowerCase() === term).forEach(v => {
+                            const card = document.createElement('div');
+                            card.className = 'video-card flex flex-col gap-3 cursor-pointer group';
+                            card.onclick = () => { currentVideo = v; navigateTo('watch'); };
+                            card.innerHTML = `
+                                <div class="relative aspect-video">
+                                    <img src="${v.thumbnail}" class="video-thumbnail w-full h-full object-cover rounded-xl group-hover:rounded-none transition-all duration-200">
+                                    <span class="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-1.5 py-0.5 rounded">${v.duration}</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <img src="${v.avatar}" class="w-9 h-9 rounded-full flex-shrink-0">
+                                    <div class="flex flex-col overflow-hidden">
+                                        <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">${v.title}</h3>
+                                        <p class="text-zinc-400 text-xs truncate">${v.channel}</p>
+                                    </div>
+                                </div>
+                            `;
+                            grid.appendChild(card);
+                        });
+                    }
+                };
+                const channel = channels.find(c => c.name === name);
+                const avatarHtml = channel && channel.avatarUrl 
+                    ? `<img src="${channel.avatarUrl}" class="w-full h-full object-cover">` 
+                    : `${name[0]}`;
+                btn.innerHTML = `<div class="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold overflow-hidden">${avatarHtml}</div> <span class="text-sm truncate">${name}</span>`;
+                sList.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+        function renderView() {
+            const main = document.getElementById('main-content');
+            main.innerHTML = ''; 
+            
+            if (currentView === 'home') {
+                main.className = 'flex-1 lg:ml-60 p-4 min-h-screen transition-all duration-300';
+                renderHome(main);
+            } else if (currentView === 'watch') {
+                main.className = 'flex-1 lg:ml-60 p-4 min-h-screen transition-all duration-300';
+                renderWatch(main);
+            } else if (currentView === 'upload') {
+                renderUpload(main);
+            } else if (currentView === 'channel') {
+                main.className = 'flex-1 lg:ml-60 p-4 min-h-screen transition-all duration-300';
+                renderChannel(main);
+            } else if (currentView === 'shorts') {
+                 main.className = 'flex-1 lg:ml-60 p-4 min-h-screen transition-all duration-300';
+                renderShorts(main);
+            }
+            
+            lucide.createIcons();
+            window.scrollTo(0, 0);
+        }
+
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
